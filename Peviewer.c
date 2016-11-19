@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
@@ -73,7 +72,7 @@ int main(int argc, char *argv[])
 
 	FILE* p;
 
-	p = fopen(argv[1], "rb");
+	fopen_s(&p, argv[1], "rb");
 	if (p == NULL) {
 		perror("Cannot open the file test.exe");
 		return 2;
