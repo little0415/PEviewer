@@ -4,7 +4,7 @@
 #include <windows.h>
 
 #define PE "It is not a PE file\n"
-
+#define LENGTHOFNAME 20
 IMAGE_DOS_HEADER DosHeader;
 IMAGE_FILE_HEADER FileHeader;
 IMAGE_SECTION_HEADER SectionHeader;
@@ -33,8 +33,8 @@ typedef struct _SectionInfo {
 	DWORD characteristics;
 } SectionInfo;
 
-void print_section(SectionInfo *sinfo) {
-	printf("%s\n", sinfo->name);
+void print_section(SectionInfo *sinfo) {    //print the value that section structure
+	printf("%s\n", sinfo->name);          
 	printf("\tVirtual Address : %x\n", sinfo->VA);
 	printf("\tVirtual Size : %x\n", sinfo->VirtualSize);
 	printf("\tPointer To Raw Data : %x\n", sinfo->Ptr2RAW);
@@ -42,11 +42,11 @@ void print_section(SectionInfo *sinfo) {
 	printf("\tCharacteristics : %lx\n", sinfo->characteristics);
 }
 
-int RAW2offset(int input, SectionInfo * sinfo) {
-	int i;
+int RAW2offset(int input, SectionInfo * sinfo) {  //Change the RVA of input  -> File Offset
+	int i;                           
 	int output = 0;
-	for (i = 0; i<NrOfSections; i++) {
-		if ((input >= sinfo[i].VA) && (input <= (sinfo[i].VirtualSize + sinfo[i].VA))) {
+	for (i = 0; i<NrOfSections; i++) { 
+		if ((input >= sinfo[i].VA) && (input <= (sinfo[i].VirtualSize + sinfo[i].VA))) {  
 			output = input - sinfo[i].VA + sinfo[i].Ptr2RAW;
 			return output;
 		}
@@ -57,71 +57,79 @@ int RAW2offset(int input, SectionInfo * sinfo) {
 
 int main(int argc, char *argv[])
 {
-	char buffer[20];
-
-	if (argc<2) {
+     int LengthofName;
+	
+     if (argc<2) {
 		printf("Usage:\nPEviewer.exe FILE.exe");
 		return 1;
 	}
-
-	strncpy(buffer, argv[1], 20);
-	printf("Opened the file: %s\n", buffer);
+     LengthofName = strlen(argv[1]);                     
+     if (LengthofName >= LENGTHOFNAME) 
+     {
+         printf("The file name exceeds %d characters.",LENGTHOFNAME);
+         return 1;
+     }
+	printf("Opened the file: %s\n", argv[1]);
 
 	FILE* p;
 
-	p = fopen(buffer, "rb");
+	p = fopen(argv[1], "rb");
 	if (p == NULL) {
 		perror("Cannot open the file test.exe");
 		return 2;
 	}
 	puts("File opened successfully");
 	fseek(p, 0, SEEK_END);
-	Size_Of_File = ftell(p);
-	fseek(p, 0, SEEK_SET);
-	fread(&DosHeader, 1, sizeof(DosHeader), p);
+	Size_Of_File = ftell(p);  // File size calc.
+     printf("File Size : %d byte\n", Size_Of_File);
 
-	if (DosHeader.e_magic != 'M' + 'Z' * 256) {
+     fseek(p, 0, SEEK_SET);  
+	fread(&DosHeader, 1, sizeof(DosHeader), p);
+     
+	if (DosHeader.e_magic != 'M' + 'Z' * 256) {  // check Dos Signature
 		printf(PE);
 		fclose(p);
 		return -1;
 	}
 
 	PointerToPeHeader = DosHeader.e_lfanew;
-	printf("PE header available at: %lx\n", PointerToPeHeader);
+	printf("PE header available at: %lx\n", PointerToPeHeader);      
 	fseek(p, PointerToPeHeader, SEEK_SET);
-	fread(&Pe_Signature, 1, sizeof(Pe_Signature), p);
-
-	if (Pe_Signature != 'P' + 'E' * 256) {
+	fread(&Pe_Signature, 1, sizeof(Pe_Signature), p);             // NT Header 
+   
+     
+	if (Pe_Signature != 'P' + 'E' * 256) {                   // check the signature
 		printf(PE);
 		fclose(p);
 		return -1;
 	}
-
-	fread(&FileHeader, 1, sizeof(FileHeader), p);
-	NrOfSections = FileHeader.NumberOfSections;
+     
+	fread(&FileHeader, 1, sizeof(FileHeader), p);          // IMAGE_FILE_HEADER
+	NrOfSections = FileHeader.NumberOfSections;           
 	printf("# of Sections: %d\n", NrOfSections);
 
-	SectionInfo * sinfo = malloc(sizeof(SectionInfo)*NrOfSections);
-	Size_Of_Opt_Header = FileHeader.SizeOfOptionalHeader;
+	SectionInfo * sinfo = malloc(sizeof(SectionInfo)*NrOfSections);      
+	Size_Of_Opt_Header = FileHeader.SizeOfOptionalHeader;               
 	printf("Size of Optional Header is: %d\n", Size_Of_Opt_Header);
-	//fseek(p,Size_Of_Opt_Header,SEEK_CUR);
+	
+     //fseek(p,Size_Of_Opt_Header,SEEK_CUR);        // move the section header
 	fread(&OptionalHeader, 1, Size_Of_Opt_Header, p);
-	subsys = OptionalHeader.Subsystem;
-	printf("# of subsystem: %d\n", subsys);
+	subsys = OptionalHeader.Subsystem;      
+	printf("# of subsystem: %d\n", subsys);    // 1 : Driver File(*.sys),  2 : GUI(GRaphic User Interface -> Notepad.exe), 3 : CUI(COnsole User Interface) -> cmd.exe
 	Addr_of_EP = OptionalHeader.AddressOfEntryPoint;
-	printf("Address of entry point: %lx\n", Addr_of_EP);
+	printf("Address of entry point: %lx\n", Addr_of_EP);  
 
-	ImportsVA = OptionalHeader.DataDirectory[1].VirtualAddress;
-	ImportsSize = OptionalHeader.DataDirectory[1].Size;
+	ImportsVA = OptionalHeader.DataDirectory[1].VirtualAddress;   // Address of Import Directory in memory
+	ImportsSize = OptionalHeader.DataDirectory[1].Size;          // size of Import Directory in memory
 	printf("Virtual Address of Import table %lx\n", ImportsVA);
 	printf("Import table size %lx\n", ImportsSize);
 	ImageBase = OptionalHeader.ImageBase;
-	printf("ImageBase equals %lx\n\n", ImageBase);
+	printf("ImageBase equals %lx\n\n", ImageBase);           
 
+     // Section Header
 	int i = 0;
-	do {
-		fread(&SectionHeader, 1, sizeof(SectionHeader), p);
-
+	do {                                                   // Section information output
+		fread(&SectionHeader, 1, sizeof(SectionHeader), p);   
 		memcpy(sinfo[i].name, SectionHeader.Name, 10);
 		sinfo[i].VA = SectionHeader.VirtualAddress;
 		sinfo[i].VirtualSize = SectionHeader.Misc.VirtualSize;
@@ -141,31 +149,29 @@ int main(int argc, char *argv[])
 
 	//ImportDirAddr = ImportsVA-SectVA+SectPtrRAW;
 
-	ImportDirAddr = RAW2offset(ImportsVA,sinfo);
-	printf("\nImports at %lx\n", ImportDirAddr);
+	ImportDirAddr = RAW2offset(ImportsVA,sinfo);  // Raw offset address of ImportDirAddr
+	printf("\nImports at %lx\n", ImportDirAddr);  
 	fseek(p, ImportDirAddr, SEEK_SET);
-	fread(&ImportDescriptor, 1, 20, p); //read the first Import
+	fread(&ImportDescriptor, 1, 20, p); //read the first IMPORT descriptor
 	int count = 1;
-
-	while (ImportDescriptor.Name != 0) {
+	while (ImportDescriptor.Name != 0) {         // Import TABLE count
 		fread(&ImportDescriptor, 1, 20, p);
 		count++;
 	}
-	IMAGE_IMPORT_DESCRIPTOR * Imported = malloc(sizeof(IMAGE_IMPORT_DESCRIPTOR)*(count - 1));
-
-	fseek(p, ImportDirAddr, SEEK_SET);
+	IMAGE_IMPORT_DESCRIPTOR * Imported = malloc(sizeof(IMAGE_IMPORT_DESCRIPTOR)*(count - 1));  
+	fseek(p, ImportDirAddr, SEEK_SET);  
 
 	for (i = 0; i<(count - 1); i++) {
 		fread(&Imported[i], 1, 20, p);
-		printf("[%d] Import Descriptor Name at %lx\n", i, Imported[i].Name);
+		printf("[%d] Import Descriptor Name at %lx\n", i, Imported[i].Name);  // RAV address of IMPORT NAME TABLE 
 	}
 
 	DWORD filename;
 
 	puts("\nList of imported dll's\n");
-	for (i = 0; i<(count - 1); i++) {
-		filename = RAW2offset(Imported[i].Name,sinfo);
-		fseek(p, filename, SEEK_SET);
+	for (i = 0; i<(count - 1); i++) { 
+		filename = RAW2offset(Imported[i].Name,sinfo);  //convert RAV address of INT to file offset
+		fseek(p, filename, SEEK_SET);      
 		do {
 			int c;
 			c = fgetc(p);
@@ -173,13 +179,10 @@ int main(int argc, char *argv[])
 				printf("\n");
 				break;
 			}
-			printf("%c", c);
+			printf("%c", c);         
 		} while (1);
 
 	}
 	fclose(p);
 	return 0;
 }
-
-
-
