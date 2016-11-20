@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 	NrOfSections = FileHeader.NumberOfSections;           
 	printf("# of Sections: %d\n", NrOfSections);
 
-	SectionInfo * sinfo = malloc(sizeof(SectionInfo)*NrOfSections);      
+	SectionInfo * sinfo = (SectionInfo *)malloc(sizeof(SectionInfo)*NrOfSections);
 	Size_Of_Opt_Header = FileHeader.SizeOfOptionalHeader;               
 	printf("Size of Optional Header is: %d\n", Size_Of_Opt_Header);
 	
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 		fread(&ImportDescriptor, 1, 20, p);
 		count++;
 	}
-	IMAGE_IMPORT_DESCRIPTOR * Imported = malloc(sizeof(IMAGE_IMPORT_DESCRIPTOR)*(count - 1));  
+	IMAGE_IMPORT_DESCRIPTOR * Imported =(IMAGE_IMPORT_DESCRIPTOR *) malloc(sizeof(IMAGE_IMPORT_DESCRIPTOR)*(count - 1));
 	fseek(p, ImportDirAddr, SEEK_SET);  
 
 	for (i = 0; i<(count - 1); i++) {
