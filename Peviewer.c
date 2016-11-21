@@ -56,18 +56,16 @@ int RAW2offset(int input, SectionInfo * sinfo) {  //Change the RVA of input  -> 
 
 int main(int argc, char *argv[])
 {
-     int LengthofName;
-	
-     if (argc<2) {
+	int LengthofName;
+	if (argc<2) {
 		printf("Usage:\nPEviewer.exe FILE.exe");
 		return 1;
 	}
-     LengthofName = strlen(argv[1]);                     
-     if (LengthofName >= LENGTHOFNAME) 
-     {
-         printf("The file name exceeds %d characters.",LENGTHOFNAME);
-         return 1;
-     }
+	LengthofName = strlen(argv[1]);                     
+	if (LengthofName >= LENGTHOFNAME) {
+		printf("The file name exceeds %d characters.",LENGTHOFNAME);
+		return 1;
+	}
 	printf("Opened the file: %s\n", argv[1]);
 
 	FILE* p;
@@ -80,9 +78,9 @@ int main(int argc, char *argv[])
 	puts("File opened successfully");
 	fseek(p, 0, SEEK_END);
 	Size_Of_File = ftell(p);  // File size calc.
-     printf("File Size : %d byte\n", Size_Of_File);
-
-     fseek(p, 0, SEEK_SET);  
+	printf("File Size : %d byte\n", Size_Of_File);
+	
+	fseek(p, 0, SEEK_SET);  
 	fread(&DosHeader, 1, sizeof(DosHeader), p);
      
 	if (DosHeader.e_magic != 'M' + 'Z' * 256) {  // check Dos Signature
@@ -111,7 +109,7 @@ int main(int argc, char *argv[])
 	Size_Of_Opt_Header = FileHeader.SizeOfOptionalHeader;               
 	printf("Size of Optional Header is: %d\n", Size_Of_Opt_Header);
 	
-     //fseek(p,Size_Of_Opt_Header,SEEK_CUR);        // move the section header
+	//fseek(p,Size_Of_Opt_Header,SEEK_CUR);        // move the section header
 	fread(&OptionalHeader, 1, Size_Of_Opt_Header, p);
 	subsys = OptionalHeader.Subsystem;      
 	printf("# of subsystem: %d\n", subsys);    // 1 : Driver File(*.sys),  2 : GUI(GRaphic User Interface -> Notepad.exe), 3 : CUI(COnsole User Interface) -> cmd.exe
@@ -125,7 +123,7 @@ int main(int argc, char *argv[])
 	ImageBase = OptionalHeader.ImageBase;
 	printf("ImageBase equals %lx\n\n", ImageBase);           
 
-     // Section Header
+	// Section Header
 	int i = 0;
 	do {                                                   // Section information output
 		fread(&SectionHeader, 1, sizeof(SectionHeader), p);   
