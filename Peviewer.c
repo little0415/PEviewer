@@ -162,13 +162,14 @@ int main(int argc, char *argv[])
 		fread(&Imported[i], 1, 20, p);
 		printf("[%d] Import Descriptor Name at %lx\n", i, Imported[i].Name);  // RAV address of IMPORT NAME TABLE 
 	}
-
-	DWORD filename;
-
+     DWORD filename, func_name;
+     long * filename_pos, func_name_pos;
+     filename_pos = (long *)malloc(sizeof(long)*(count)-1);
 	puts("\nList of imported dll's\n");
 	for (i = 0; i<(count - 1); i++) { 
 		filename = RAW2offset(Imported[i].Name,sinfo);  //convert RAV address of INT to file offset
 		fseek(p, filename, SEEK_SET);      
+          filename_pos[i] = ftell(p);
 		do {
 			int c;
 			c = fgetc(p);
@@ -178,7 +179,54 @@ int main(int argc, char *argv[])
 			}
 			printf("%c", c);         
 		} while (1);
+          //printf("\taddress:%lx\n", filename);
+          func_name = RAW2offset(Imported[i].FirstThunk, sinfo); // [-] function output starting, incomplete...
+          fseek(p, func_name, SEEK_SET);
+          fread(&func_name, 1, sizeof(func_name), p);
+          func_name = RAW2offset(func_name, sinfo);
+          
+          while (func_name ==0xffffffff) // RVA chekcing
+          {
+              fread(&func_name, 1, sizeof(func_name), p);
+              //printf("\t\t\t one function address in INT RVA: %lx\n", func_name);
+              func_name = RAW2offset(func_name, sinfo);
+          }
+          func_name_pos = ftell(p);
+          fseek(p, func_name, SEEK_SET);
+          fgetc(p); fgetc(p); printf("\t\t");
 
+          int temp,j=1;
+          while (filename_pos[i]-2>func_name_pos)
+          {
+                  int c;
+                  c = fgetc(p);
+                  if (j == 1)
+                  {
+                      temp = c;
+                  }
+                  if ( isalpha(c) || (c==0x5f) || (c>=0x30 && c<=0x39) )  //short cut, 대소문자 또는 _ 로 시작하는지 확인
+                  {
+                      printf("%c", c);
+                  }
+                  else
+                  {
+                      if (c == 0x00 && temp != 0x00)
+                      {
+                          printf("()\n\t\t");
+                          fgetc(p); fgetc(p);
+                      }
+                      do
+                      {
+                          c = fgetc(p);
+                      } while ( !(isalpha(c) || (c == 0x5f) || (c >= 0x30 && c <= 0x39)) );
+                      printf("%c", c);
+                      
+                  }
+                  temp = c;
+                  func_name_pos = ftell(p);
+                  j++;
+          }
+          printf("()\n");
 	}
 	fclose(p);
 	return 0;
